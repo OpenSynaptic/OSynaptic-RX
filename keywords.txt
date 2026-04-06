@@ -1,0 +1,48 @@
+##############################################
+# Syntax Coloring Map for OSynaptic-RX
+##############################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+OSRXParser	KEYWORD1
+osrx_packet_meta	KEYWORD1
+osrx_sensor_field	KEYWORD1
+osrx_frame_fn	KEYWORD1
+
+osrx_u8	KEYWORD1
+osrx_u16	KEYWORD1
+osrx_u32	KEYWORD1
+osrx_i8	KEYWORD1
+osrx_i16	KEYWORD1
+osrx_i32	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+osrx_parser_init	KEYWORD2
+osrx_parser_reset	KEYWORD2
+osrx_feed_byte	KEYWORD2
+osrx_feed_done	KEYWORD2
+osrx_feed_bytes	KEYWORD2
+osrx_packet_decode	KEYWORD2
+osrx_sensor_unpack	KEYWORD2
+osrx_sensor_recv	KEYWORD2
+osrx_crc8	KEYWORD2
+osrx_crc16	KEYWORD2
+osrx_b62_decode	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+OSRX_PACKET_MAX	LITERAL1
+OSRX_BODY_MAX	LITERAL1
+OSRX_ID_MAX	LITERAL1
+OSRX_UNIT_MAX	LITERAL1
+OSRX_B62_MAX	LITERAL1
+OSRX_VALUE_SCALE	LITERAL1
+OSRX_CMD_DATA_FULL	LITERAL1
+OSRX_VALIDATE_CRC8	LITERAL1
+OSRX_VALIDATE_CRC16	LITERAL1
+OSRX_NO_PARSER	LITERAL1
+OSRX_NO_TIMESTAMP	LITERAL1

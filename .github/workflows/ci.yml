@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+    paths:
+      - "OSynaptic-RX/**"
+      - ".github/workflows/osrx-ci.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "OSynaptic-RX/**"
+
+jobs:
+  # -------------------------------------------------------------------------
+  # CMake build + unit tests (Linux, strict C89)
+  # -------------------------------------------------------------------------
+  cmake-linux:
+    name: CMake / GCC (C89, Linux)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: OSynaptic-RX
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_C_STANDARD=90 \
+            -DCMAKE_C_FLAGS="-Wall -Wextra -Wpedantic -Wno-long-long -Werror" \
+            -DOSRX_BUILD_TESTS=ON \
+            -DOSRX_BUILD_EXAMPLES=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  # -------------------------------------------------------------------------
+  # CMake cross-compile: avr-gcc (no run, just compile check)
+  # -------------------------------------------------------------------------
+  cross-avr:
+    name: Cross / avr-gcc (ATmega328P)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: OSynaptic-RX
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install avr-gcc
+        run: sudo apt-get install -y gcc-avr avr-libc
+
+      - name: Compile library (avr-gcc, C89)
+        run: |
+          avr-gcc -std=c89 -mmcu=atmega328p -Os -Wall -Wextra \
+            -I include \
+            -c src/osrx_crc.c    -o /tmp/osrx_crc.o
+          avr-gcc -std=c89 -mmcu=atmega328p -Os -Wall -Wextra \
+            -I include \
+            -c src/osrx_b62.c    -o /tmp/osrx_b62.o
+          avr-gcc -std=c89 -mmcu=atmega328p -Os -Wall -Wextra \
+            -I include \
+            -c src/osrx_packet.c -o /tmp/osrx_packet.o
+          avr-gcc -std=c89 -mmcu=atmega328p -Os -Wall -Wextra \
+            -I include \
+            -c src/osrx_sensor.c -o /tmp/osrx_sensor.o
+          avr-gcc -std=c89 -mmcu=atmega328p -Os -Wall -Wextra \
+            -I include \
+            -c src/osrx_parser.c -o /tmp/osrx_parser.o
+
+      - name: Compile basic_rx example (avr-gcc)
+        run: |
+          avr-gcc -std=c89 -mmcu=atmega328p -Os -Wall -Wextra \
+            -I include \
+            src/osrx_crc.c src/osrx_b62.c \
+            src/osrx_packet.c src/osrx_sensor.c src/osrx_parser.c \
+            examples/basic_rx.c \
+            -o /tmp/basic_rx.elf
+
+  # -------------------------------------------------------------------------
+  # Arduino CLI lint (library.properties + sketch syntax)
+  # -------------------------------------------------------------------------
+  arduino-lint:
+    name: Arduino Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: arduino/arduino-lint-action@v1
+        with:
+          path: OSynaptic-RX
+          library-manager: submit
+          compliance: strict
