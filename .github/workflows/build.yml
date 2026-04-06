@@ -12,6 +12,40 @@ on:
 
 jobs:
   # -------------------------------------------------------------------------
+  # CMake native build + install verification
+  # -------------------------------------------------------------------------
+  cmake-native:
+    name: CMake / GCC install verify
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: |
+          cmake -S . -B build/cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_FLAGS="-std=c89 -pedantic -Wall -Wextra -Werror" \
+            -DCMAKE_INSTALL_PREFIX=/tmp/osrx_install \
+            -DOSRX_BUILD_EXAMPLES=ON \
+            -DOSRX_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build/cmake --parallel
+
+      - name: Test
+        run: ctest --test-dir build/cmake --output-on-failure
+
+      - name: Install
+        run: cmake --install build/cmake
+
+      - name: Verify cmake package files
+        run: |
+          test -f /tmp/osrx_install/lib/cmake/osrx/osrxTargets.cmake
+          test -f /tmp/osrx_install/lib/cmake/osrx/osrxConfig.cmake
+          test -f /tmp/osrx_install/lib/cmake/osrx/osrxConfigVersion.cmake
+          echo "CMake package files OK"
+
+  # -------------------------------------------------------------------------
   # AVR cross-compile — ATmega and ATtiny targets
   # -------------------------------------------------------------------------
   avr-cross:
