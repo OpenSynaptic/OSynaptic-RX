@@ -150,7 +150,7 @@ jobs:
             -DOSRX_BUILD_EXAMPLES=OFF \
             -DOSRX_BUILD_TESTS=OFF
           cmake --build /tmp/cmake_build_x64 --parallel
-          cmake --install /tmp/cmake_build_x64
+          cmake --install /tmp/cmake_build_x64 --prefix /tmp/cmake_install_x64
 
           cd /tmp && tar -czf "${CMAKE_NAME}" cmake_install_x64/
           echo "cmake_x64_name=${CMAKE_NAME}" >> "$GITHUB_OUTPUT"
@@ -180,7 +180,7 @@ jobs:
             -DOSRX_BUILD_EXAMPLES=OFF \
             -DOSRX_BUILD_TESTS=OFF
           cmake --build /tmp/cmake_build_arm64 --parallel
-          cmake --install /tmp/cmake_build_arm64
+          cmake --install /tmp/cmake_build_arm64 --prefix /tmp/cmake_install_arm64
 
           cd /tmp && tar -czf "${CMAKE_NAME}" cmake_install_arm64/
           echo "cmake_arm64_name=${CMAKE_NAME}" >> "$GITHUB_OUTPUT"
