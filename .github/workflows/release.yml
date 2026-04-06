@@ -1,0 +1,193 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write   # required for creating GitHub Releases and uploading assets
+
+jobs:
+  # -------------------------------------------------------------------------
+  # 1. Verify: version tag must match library.properties and CMakeLists.txt
+  # -------------------------------------------------------------------------
+  verify-version:
+    name: Verify version consistency
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: OSynaptic-RX
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract tag version
+        id: extract
+        run: |
+          TAG="${GITHUB_REF_NAME}"           # e.g. v1.0.0
+          VER="${TAG#v}"                     # e.g. 1.0.0
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Tag version: $VER"
+
+      - name: Check library.properties
+        run: |
+          VER="${{ steps.extract.outputs.version }}"
+          PROP_VER=$(grep -E "^version=" library.properties | cut -d= -f2 | tr -d '[:space:]')
+          echo "library.properties version: $PROP_VER"
+          if [ "$PROP_VER" != "$VER" ]; then
+            echo "::error::library.properties version ($PROP_VER) does not match tag ($VER)"
+            exit 1
+          fi
+
+      - name: Check CMakeLists.txt
+        run: |
+          VER="${{ steps.extract.outputs.version }}"
+          CMAKE_VER=$(grep -oP 'project\(osrx\s+VERSION\s+\K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          echo "CMakeLists.txt version: $CMAKE_VER"
+          if [ "$CMAKE_VER" != "$VER" ]; then
+            echo "::error::CMakeLists.txt version ($CMAKE_VER) does not match tag ($VER)"
+            exit 1
+          fi
+
+  # -------------------------------------------------------------------------
+  # 2. Full CI sanity check before packaging
+  # -------------------------------------------------------------------------
+  ci-check:
+    name: CI sanity check
+    needs: verify-version
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: OSynaptic-RX
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: CMake build + tests (GCC, strict C89)
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_FLAGS="-std=c89 -pedantic -Wall -Wextra -Werror" \
+            -DOSRX_BUILD_TESTS=ON \
+            -DOSRX_BUILD_EXAMPLES=ON
+          cmake --build build --parallel
+          ctest --test-dir build --output-on-failure
+
+      - name: Install arduino-cli
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh \
+            | BINDIR=/usr/local/bin sh
+
+      - name: Arduino compile check
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+          mkdir -p ~/Arduino/libraries
+          ln -s "$GITHUB_WORKSPACE/OSynaptic-RX" ~/Arduino/libraries/OSynaptic-RX
+          arduino-cli compile --fqbn arduino:avr:uno examples/BasicRX
+
+  # -------------------------------------------------------------------------
+  # 3. Package — produce Arduino-compatible zip and source tarball
+  # -------------------------------------------------------------------------
+  package:
+    name: Package release artifacts
+    needs: [verify-version, ci-check]
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: OSynaptic-RX
+    outputs:
+      zip_name: ${{ steps.pack.outputs.zip_name }}
+      tar_name: ${{ steps.pack.outputs.tar_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build Arduino zip
+        id: pack
+        run: |
+          VER="${{ needs.verify-version.outputs.version }}"
+          LIB_NAME="OSynaptic-RX"
+          ZIP_NAME="${LIB_NAME}-${VER}.zip"
+          TAR_NAME="${LIB_NAME}-${VER}.tar.gz"
+
+          mkdir -p /tmp/pkg/${LIB_NAME}
+          rsync -a \
+            --exclude='.git' \
+            --exclude='build/' \
+            --exclude='.github/' \
+            . /tmp/pkg/${LIB_NAME}/
+
+          cd /tmp/pkg
+          zip -r "${ZIP_NAME}" "${LIB_NAME}/"
+          tar -czf "${TAR_NAME}" "${LIB_NAME}/"
+
+          echo "zip_name=${ZIP_NAME}" >> "$GITHUB_OUTPUT"
+          echo "tar_name=${TAR_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Packaged: ${ZIP_NAME} ($(du -sh ${ZIP_NAME} | cut -f1))"
+          echo "Packaged: ${TAR_NAME} ($(du -sh ${TAR_NAME} | cut -f1))"
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arduino-zip
+          path: /tmp/pkg/${{ steps.pack.outputs.zip_name }}
+          retention-days: 7
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-tarball
+          path: /tmp/pkg/${{ steps.pack.outputs.tar_name }}
+          retention-days: 7
+
+  # -------------------------------------------------------------------------
+  # 4. Create GitHub Release and upload assets
+  # -------------------------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    needs: [verify-version, package]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download zip artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: arduino-zip
+          path: dist/
+
+      - name: Download tarball artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: source-tarball
+          path: dist/
+
+      - name: Extract release notes for this version
+        id: notes
+        run: |
+          VER="${{ needs.verify-version.outputs.version }}"
+          NOTES=$(awk "/^## v${VER}/{found=1; next} found && /^## v/{exit} found{print}" \
+                  OSynaptic-RX/RELEASE_NOTES_v${VER}.md 2>/dev/null \
+                  || awk "/^## v${VER}/{found=1; next} found && /^## v/{exit} found{print}" \
+                  OSynaptic-RX/RELEASE_NOTES_v1.0.0.md 2>/dev/null \
+                  || echo "See RELEASE_NOTES for details.")
+          echo "$NOTES" > /tmp/release_notes.md
+          cat /tmp/release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "OSynaptic-RX v${{ needs.verify-version.outputs.version }}"
+          body_path: /tmp/release_notes.md
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
+          files: |
+            dist/${{ needs.package.outputs.zip_name }}
+            dist/${{ needs.package.outputs.tar_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
