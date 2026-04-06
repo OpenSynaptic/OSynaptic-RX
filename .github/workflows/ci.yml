@@ -4,12 +4,21 @@ on:
   push:
     branches: ["main", "develop"]
     paths:
-      - "OSynaptic-RX/**"
-      - ".github/workflows/osrx-ci.yml"
+      - "src/**"
+      - "include/**"
+      - "tests/**"
+      - "examples/**"
+      - "CMakeLists.txt"
+      - ".github/workflows/ci.yml"
   pull_request:
     branches: ["main"]
     paths:
-      - "OSynaptic-RX/**"
+      - "src/**"
+      - "include/**"
+      - "tests/**"
+      - "examples/**"
+      - "CMakeLists.txt"
+  workflow_dispatch:
 
 jobs:
   # -------------------------------------------------------------------------
@@ -18,16 +27,13 @@ jobs:
   cmake-linux:
     name: CMake / GCC (C89, Linux)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: OSynaptic-RX
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Configure
         run: |
-          cmake -B build \
+          cmake -S . -B build \
             -DCMAKE_C_STANDARD=90 \
             -DCMAKE_C_FLAGS="-Wall -Wextra -Wpedantic -Wno-long-long -Werror" \
             -DOSRX_BUILD_TESTS=ON \
@@ -45,9 +51,6 @@ jobs:
   cross-avr:
     name: Cross / avr-gcc (ATmega328P)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: OSynaptic-RX
 
     steps:
       - uses: actions/checkout@v4
@@ -94,6 +97,6 @@ jobs:
 
       - uses: arduino/arduino-lint-action@v1
         with:
-          path: OSynaptic-RX
+          path: .
           library-manager: submit
           compliance: strict

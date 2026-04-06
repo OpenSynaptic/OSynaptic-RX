@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v1.0.0)"
+        required: true
 
 permissions:
   contents: write   # required for creating GitHub Releases and uploading assets
@@ -15,9 +20,6 @@ jobs:
   verify-version:
     name: Verify version consistency
     runs-on: ubuntu-22.04
-    defaults:
-      run:
-        working-directory: OSynaptic-RX
     outputs:
       version: ${{ steps.extract.outputs.version }}
     steps:
@@ -58,9 +60,6 @@ jobs:
     name: CI sanity check
     needs: verify-version
     runs-on: ubuntu-22.04
-    defaults:
-      run:
-        working-directory: OSynaptic-RX
     steps:
       - uses: actions/checkout@v4
 
@@ -84,7 +83,7 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install arduino:avr
           mkdir -p ~/Arduino/libraries
-          ln -s "$GITHUB_WORKSPACE/OSynaptic-RX" ~/Arduino/libraries/OSynaptic-RX
+          ln -s "$GITHUB_WORKSPACE" ~/Arduino/libraries/OSynaptic-RX
           arduino-cli compile --fqbn arduino:avr:uno examples/BasicRX
 
   # -------------------------------------------------------------------------
@@ -94,9 +93,6 @@ jobs:
     name: Package release artifacts
     needs: [verify-version, ci-check]
     runs-on: ubuntu-22.04
-    defaults:
-      run:
-        working-directory: OSynaptic-RX
     outputs:
       zip_name: ${{ steps.pack.outputs.zip_name }}
       tar_name: ${{ steps.pack.outputs.tar_name }}
@@ -172,9 +168,9 @@ jobs:
         run: |
           VER="${{ needs.verify-version.outputs.version }}"
           NOTES=$(awk "/^## v${VER}/{found=1; next} found && /^## v/{exit} found{print}" \
-                  OSynaptic-RX/RELEASE_NOTES_v${VER}.md 2>/dev/null \
+                  RELEASE_NOTES_v${VER}.md 2>/dev/null \
                   || awk "/^## v${VER}/{found=1; next} found && /^## v/{exit} found{print}" \
-                  OSynaptic-RX/RELEASE_NOTES_v1.0.0.md 2>/dev/null \
+                  RELEASE_NOTES_v1.0.0.md 2>/dev/null \
                   || echo "See RELEASE_NOTES for details.")
           echo "$NOTES" > /tmp/release_notes.md
           cat /tmp/release_notes.md
