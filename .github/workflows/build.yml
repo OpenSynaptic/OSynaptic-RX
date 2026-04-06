@@ -1,0 +1,123 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      verbose:
+        description: "Enable verbose output"
+        required: false
+        default: "false"
+
+jobs:
+  # -------------------------------------------------------------------------
+  # AVR cross-compile — ATmega and ATtiny targets
+  # -------------------------------------------------------------------------
+  avr-cross:
+    name: AVR cross-compile / ${{ matrix.mcu }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        mcu:
+          - atmega328p
+          - atmega2560
+          - atmega32u4
+          - attiny85
+          - attiny1614
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install avr-gcc toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-avr binutils-avr avr-libc
+
+      - name: Compile library objects (${{ matrix.mcu }})
+        run: |
+          MCU=${{ matrix.mcu }}
+          OBJ_DIR=build/avr/$MCU
+          mkdir -p "$OBJ_DIR"
+          for src in src/osrx_crc.c src/osrx_b62.c src/osrx_packet.c \
+                     src/osrx_sensor.c src/osrx_parser.c; do
+            obj="$OBJ_DIR/$(basename ${src%.c}.o)"
+            avr-gcc -mmcu=$MCU -Os -std=c89 -pedantic \
+                    -Wall -Wextra -Werror \
+                    -I include \
+                    -c "$src" -o "$obj"
+          done
+          echo "Objects for $MCU:"
+          avr-size "$OBJ_DIR"/*.o
+
+      - name: Verify library structure
+        run: |
+          grep -E "^version=" library.properties
+          test -f OSynaptic-RX.h
+          echo "Library structure OK"
+
+  # -------------------------------------------------------------------------
+  # ARM Cortex-M0 cross-compile (SAMD / STM32 / nRF52 users)
+  # -------------------------------------------------------------------------
+  arm-cross:
+    name: ARM Cortex-M0 cross-compile
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install arm-none-eabi-gcc
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi
+
+      - name: Compile library objects (Cortex-M0)
+        run: |
+          OBJ_DIR=build/arm/cortex-m0
+          mkdir -p "$OBJ_DIR"
+          for src in src/osrx_crc.c src/osrx_b62.c src/osrx_packet.c \
+                     src/osrx_sensor.c src/osrx_parser.c; do
+            obj="$OBJ_DIR/$(basename ${src%.c}.o)"
+            arm-none-eabi-gcc \
+                -mcpu=cortex-m0 -mthumb \
+                -Os -std=c89 -pedantic \
+                -Wall -Wextra -Werror \
+                -I include \
+                -ffreestanding \
+                -c "$src" -o "$obj"
+          done
+          arm-none-eabi-size "$OBJ_DIR"/*.o
+
+  # -------------------------------------------------------------------------
+  # Size report — track Flash/RAM footprint over time (ATmega328P)
+  # -------------------------------------------------------------------------
+  size-report:
+    name: Flash/RAM footprint report (ATmega328P)
+    runs-on: ubuntu-22.04
+    needs: avr-cross
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install avr tools
+        run: sudo apt-get update && sudo apt-get install -y gcc-avr binutils-avr avr-libc
+
+      - name: Build and report size
+        run: |
+          # Parser-only (minimal RX — no sensor unpack)
+          mkdir -p build/size
+          for src in src/osrx_crc.c src/osrx_b62.c \
+                     src/osrx_packet.c src/osrx_parser.c; do
+            avr-gcc -mmcu=atmega328p -Os -std=c89 \
+                    -I include \
+                    -c "$src" -o "build/size/$(basename ${src%.c}.o)"
+          done
+          echo ""
+          echo "=== Parser-only — ATmega328P ==="
+          avr-size -C --mcu=atmega328p build/size/*.o
+
+          # Full library (parser + sensor unpack)
+          mkdir -p build/size_full
+          for src in src/osrx_crc.c src/osrx_b62.c \
+                     src/osrx_packet.c src/osrx_sensor.c src/osrx_parser.c; do
+            avr-gcc -mmcu=atmega328p -Os -std=c89 \
+                    -I include \
+                    -c "$src" -o "build/size_full/$(basename ${src%.c}.o)"
+          done
+          echo ""
+          echo "=== Full library (all modules) — ATmega328P ==="
+          avr-size -C --mcu=atmega328p build/size_full/*.o

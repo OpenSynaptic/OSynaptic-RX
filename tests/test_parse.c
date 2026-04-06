@@ -128,8 +128,15 @@ static void test_b62(void)
 #define TEST_CMD     63
 #define TEST_ROUTE   1
 
-static const char TEST_BODY[] = "T1|Cel|TVK";
-#define TEST_BODY_LEN 10
+/*
+ * Body uses the current OpenSynaptic wire format:
+ *   "{aid}.U.{ts_b64}|{sid}>U.{unit}:{b62}|"
+ * aid  = 0x01020304 = 16909060 (decimal)
+ * ts   = 0x00001234 -> 6-byte BE -> base64url "AAAAABI0"
+ * sid  = "T1", unit-code = "A01" (degree Celsius), b62 = "TVK" (215000)
+ */
+static const char TEST_BODY[] = "16909060.U.AAAAABI0|T1>U.A01:TVK|";
+#define TEST_BODY_LEN 33
 
 static int build_frame(osrx_u8 *out, int out_cap)
 {
@@ -180,7 +187,7 @@ static void test_packet_decode(void)
     printf("--- packet_decode ---\n");
 
     flen = build_frame(frame, (int)sizeof(frame));
-    CHECK(flen == 26);
+    CHECK(flen == 49);
 
     rc = osrx_packet_decode(frame, flen, &meta);
     CHECK(rc == 1);
@@ -204,13 +211,13 @@ static void test_packet_decode(void)
     CHECK(rc == 0);
 
     /* Corrupted CRC-8 byte */
-    frame[23] ^= 0x01u;
+    frame[46] ^= 0x01u;
     rc = osrx_packet_decode(frame, flen, &meta);
     CHECK(rc == 1 && meta.crc8_ok == 0);
-    frame[23] ^= 0x01u; /* restore */
+    frame[46] ^= 0x01u; /* restore */
 
     /* Corrupted CRC-16 */
-    frame[25] ^= 0xFFu;
+    frame[48] ^= 0xFFu;
     rc = osrx_packet_decode(frame, flen, &meta);
     CHECK(rc == 1 && meta.crc16_ok == 0);
 }
@@ -236,7 +243,7 @@ static void test_sensor_unpack(void)
     rc = osrx_sensor_unpack(frame + meta.body_off, meta.body_len, &field);
     CHECK(rc == 1);
     CHECK(strcmp(field.sensor_id, "T1")  == 0);
-    CHECK(strcmp(field.unit,      "Cel") == 0);
+    CHECK(strcmp(field.unit,      "A01") == 0);
     CHECK(field.scaled == 215000L);
 
     /* Convenience call */

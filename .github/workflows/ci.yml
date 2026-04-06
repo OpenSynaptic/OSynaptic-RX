@@ -97,6 +97,5 @@ jobs:
 
       - uses: arduino/arduino-lint-action@v1
         with:
-          path: .
-          library-manager: submit
+          library-manager: false
           compliance: strict
