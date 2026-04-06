@@ -53,6 +53,12 @@
 #  define OSRX_VALIDATE_CRC16 1
 #endif
 
+/* Integer scale factor applied to all sensor values on the TX side.
+ * real_value = field.scaled / OSRX_VALUE_SCALE  (e.g. 215000/10000 = 21.5) */
+#ifndef OSRX_VALUE_SCALE
+#  define OSRX_VALUE_SCALE 10000L
+#endif
+
 /* Set to 1 to drop the ts_sec field from osrx_packet_meta (~20 B Flash,
  * 4 B RAM saved on AVR).  disabled by default. */
 #ifndef OSRX_NO_TIMESTAMP
