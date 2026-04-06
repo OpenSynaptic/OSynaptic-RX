@@ -98,7 +98,7 @@ jobs:
 
       - name: Configure (${{ matrix.tier.name }})
         run: |
-          cmake -S . -B build/tier \
+          cmake -S . -B build/tier-${{ matrix.tier.name }} \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_FLAGS="-std=c89 -pedantic -Wall -Wextra -Werror" \
             ${{ matrix.tier.flags }} \
@@ -106,10 +106,10 @@ jobs:
             -DOSRX_BUILD_EXAMPLES=ON
 
       - name: Build (${{ matrix.tier.name }})
-        run: cmake --build build/tier --parallel
+        run: cmake --build build/tier-${{ matrix.tier.name }} --parallel
 
       - name: Test (${{ matrix.tier.name }})
-        run: ctest --test-dir build/tier --output-on-failure
+        run: ctest --test-dir build/tier-${{ matrix.tier.name }} --output-on-failure
 
   # -------------------------------------------------------------------------
   # CMake cross-compile: avr-gcc (no run, just compile check)

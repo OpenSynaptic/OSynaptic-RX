@@ -216,10 +216,13 @@ static void test_packet_decode(void)
     CHECK(rc == 1 && meta.crc8_ok == 0);
     frame[46] ^= 0x01u; /* restore */
 
+#if OSRX_VALIDATE_CRC16
     /* Corrupted CRC-16 */
     frame[48] ^= 0xFFu;
     rc = osrx_packet_decode(frame, flen, &meta);
     CHECK(rc == 1 && meta.crc16_ok == 0);
+    frame[48] ^= 0xFFu; /* restore */
+#endif
 }
 
 /* ------------------------------------------------------------------ */
@@ -258,8 +261,10 @@ static void test_sensor_unpack(void)
 }
 
 /* ------------------------------------------------------------------ */
-/* Streaming parser tests                                              */
+/* Streaming parser tests (only when parser is compiled in)           */
 /* ------------------------------------------------------------------ */
+
+#ifndef OSRX_NO_PARSER
 
 static int          g_cb_called;
 static osrx_i32     g_cb_scaled;
@@ -334,6 +339,8 @@ static void test_parser(void)
     }
 }
 
+#endif /* OSRX_NO_PARSER */
+
 /* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 /* ------------------------------------------------------------------ */
@@ -345,7 +352,9 @@ int main(void)
     test_b62();
     test_packet_decode();
     test_sensor_unpack();
+#ifndef OSRX_NO_PARSER
     test_parser();
+#endif
     printf("==============================\n");
     printf("Total: %d passed, %d failed\n", g_pass, g_fail);
     return (g_fail == 0) ? 0 : 1;
