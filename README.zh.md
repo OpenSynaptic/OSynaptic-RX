@@ -1,7 +1,5 @@
 # OSynaptic-RX
 
-English README: [README.md](README.md)
-
 **面向 8 位 MCU 的 OpenSynaptic 单向接收解码器**。它用 **纯 C89**、**无堆内存**、AVR 上最低 **55 字节栈峰值** 的实现，把 UART / UDP / LoRa / RS-485 / SPI 等串行链路上的 OpenSynaptic 传感器帧解码为经过校验的定点整数读数。它可以直接对接 [OSynaptic-TX](../OSynaptic-TX/README.md) 节点和 [OpenSynaptic](../OpenSynaptic/README.md) Python Hub。
 
 ![C89](https://img.shields.io/badge/C-89-00599C?logo=c&logoColor=white)

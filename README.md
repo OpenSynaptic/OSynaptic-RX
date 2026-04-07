@@ -1,7 +1,5 @@
 # OSynaptic-RX
 
-简体中文说明请见 [README.zh.md](README.zh.md)。
-
 **RX-only OpenSynaptic packet decoder for 8-bit MCUs** — decodes OpenSynaptic sensor frames from any serial transport (UART / UDP / LoRa / RS-485 / SPI) into validated integer sensor readings with **pure C89**, **no heap**, and a stack peak as low as **55 bytes** on AVR. Pairs directly with [OSynaptic-TX](../OSynaptic-TX/README.md) sensor nodes and the [OpenSynaptic](../OpenSynaptic/README.md) Python hub.
 
 ![C89](https://img.shields.io/badge/C-89-00599C?logo=c&logoColor=white)
