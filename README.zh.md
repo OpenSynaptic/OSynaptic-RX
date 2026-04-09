@@ -41,6 +41,7 @@ File > Examples > OSynaptic-RX > BasicRX → Upload
 
 ## 目录
 
+- [快速参考表](#快速参考表)
 - [为什么选择 OSynaptic-RX](#为什么选择-osynaptic-rx)
 - [两种解码路径](#两种解码路径)
 - [内存占用](#内存占用)
