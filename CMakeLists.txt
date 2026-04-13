@@ -18,6 +18,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 # ---------------------------------------------------------------------------
 set(OSRX_ID_MAX   "" CACHE STRING "Override OSRX_ID_MAX   (max sensor ID length + NUL)")
 set(OSRX_UNIT_MAX "" CACHE STRING "Override OSRX_UNIT_MAX (max unit string length + NUL)")
+set(OSRX_B62_MAX  "" CACHE STRING "Override OSRX_B62_MAX  (max Base62 chars + NUL)")
 set(OSRX_BODY_MAX "" CACHE STRING "Override OSRX_BODY_MAX (max body byte count)")
 
 # Flash-reduction switches:
@@ -54,6 +55,9 @@ if(OSRX_ID_MAX)
 endif()
 if(OSRX_UNIT_MAX)
     target_compile_definitions(osrx PUBLIC OSRX_UNIT_MAX=${OSRX_UNIT_MAX})
+endif()
+if(OSRX_B62_MAX)
+    target_compile_definitions(osrx PUBLIC OSRX_B62_MAX=${OSRX_B62_MAX})
 endif()
 if(OSRX_BODY_MAX)
     target_compile_definitions(osrx PUBLIC OSRX_BODY_MAX=${OSRX_BODY_MAX})

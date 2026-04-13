@@ -8,8 +8,16 @@
 typedef char osrx_assert_u32_is_4_bytes[(sizeof(osrx_u32) == 4u) ? 1 : -1];
 typedef char osrx_assert_i32_is_4_bytes[(sizeof(osrx_i32) == 4u) ? 1 : -1];
 
+typedef struct osrx_align_i32_probe {
+    char     pad;
+    osrx_i32 value;
+} osrx_align_i32_probe;
+
 static int g_pass = 0;
 static int g_fail = 0;
+
+#define OSRX_PUBLISHED_ID_MAX   9
+#define OSRX_PUBLISHED_UNIT_MAX 9
 
 #define CHECK(cond)                                                    \
     do {                                                               \
@@ -21,6 +29,16 @@ static int g_fail = 0;
             ++g_fail;                                                  \
         }                                                              \
     } while (0)
+
+static size_t round_up_size(size_t value, size_t alignment)
+{
+    return ((value + alignment - (size_t)1u) / alignment) * alignment;
+}
+
+static size_t i32_alignment(void)
+{
+    return offsetof(osrx_align_i32_probe, value);
+}
 
 static void test_integer_widths(void)
 {
@@ -39,13 +57,27 @@ static void test_integer_widths(void)
 
 static void test_host_layout(void)
 {
+    size_t field_align = i32_alignment();
+    size_t field_bytes = (size_t)OSRX_ID_MAX + (size_t)OSRX_UNIT_MAX;
+    size_t scaled_off = round_up_size(field_bytes, field_align);
+    size_t field_size = round_up_size(
+        scaled_off + sizeof(((osrx_sensor_field *)0)->scaled),
+        field_align
+    );
+
     printf("--- host ABI layout ---\n");
-    CHECK(offsetof(osrx_sensor_field, scaled) == 20u);
-    CHECK(sizeof(osrx_sensor_field) == 24u);
+    if (OSRX_ID_MAX == OSRX_PUBLISHED_ID_MAX &&
+        OSRX_UNIT_MAX == OSRX_PUBLISHED_UNIT_MAX) {
+        CHECK(offsetof(osrx_sensor_field, scaled) == (size_t)20u);
+        CHECK(sizeof(osrx_sensor_field) == (size_t)24u);
+    } else {
+        CHECK(offsetof(osrx_sensor_field, scaled) == scaled_off);
+        CHECK(sizeof(osrx_sensor_field) == field_size);
+    }
 #if OSRX_NO_TIMESTAMP
-    CHECK(sizeof(osrx_packet_meta) == 28u);
+    CHECK(sizeof(osrx_packet_meta) == (size_t)28u);
 #else
-    CHECK(sizeof(osrx_packet_meta) == 32u);
+    CHECK(sizeof(osrx_packet_meta) == (size_t)32u);
 #endif
 }
 
