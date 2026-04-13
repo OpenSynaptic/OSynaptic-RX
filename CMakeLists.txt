@@ -89,6 +89,10 @@ if(OSRX_BUILD_TESTS)
     add_executable(test_parse tests/test_parse.c)
     target_link_libraries(test_parse PRIVATE osrx)
     add_test(NAME test_parse COMMAND test_parse)
+
+    add_executable(test_host_abi tests/test_host_abi.c)
+    target_link_libraries(test_host_abi PRIVATE osrx)
+    add_test(NAME test_host_abi COMMAND test_host_abi)
 endif()
 
 # ---------------------------------------------------------------------------
